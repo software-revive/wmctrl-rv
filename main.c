@@ -55,12 +55,13 @@ Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 "  -c <WIN>             Close the window gracefully.\n" \
 "  -R <WIN>             Move the window to the current desktop and\n" \
 "                       activate it.\n" \
+"  -Y <WIN>             Iconify (minimize) the window.\n" \
 "  -r <WIN> -t <DESK>   Move the window to the specified desktop.\n" \
 "  -r <WIN> -e <MVARG>  Resize and move the window around the desktop.\n" \
 "                       The format of the <MVARG> argument is described below.\n" \
 "  -r <WIN> -b <STARG>  Change the state of the window. Using this option it's\n" \
 "                       possible for example to make the window maximized,\n" \
-"                       minimized or fullscreen. The format of the <STARG>\n" \
+"                       shaded or fullscreen. The format of the <STARG>\n" \
 "                       argument and list of possible states is given below.\n" \
 "  -r <WIN> -N <STR>    Set the name (long title) of the window.\n" \
 "  -r <WIN> -I <STR>    Set the icon name (short title) of the window.\n" \
@@ -249,10 +250,10 @@ int main (int argc, char **argv) { /* {{{ */
     Display *disp;
 
     memset(&options, 0, sizeof(options)); /* just for sure */
-    
+
     /* necessary to make g_get_charset() and g_locale_*() work */
     setlocale(LC_ALL, "");
-    
+
     /* make "--help" and "--version" work. I don't want to use
      * getopt_long for portability reasons */
     if (argc == 2 && argv[1]) {
@@ -266,7 +267,7 @@ int main (int argc, char **argv) { /* {{{ */
         }
     }
    
-    while ((opt = getopt(argc, argv, "FGVvhSlupidmxa:r:s:c:t:w:k:o:n:g:e:b:N:I:T:R:")) != -1) {
+    while ((opt = getopt(argc, argv, "FGVvhSlupidmxa:r:s:c:t:w:k:o:n:g:e:b:N:I:T:R:Y:")) != -1) {
         missing_option = 0;
         switch (opt) {
             case 'F':
@@ -294,7 +295,7 @@ int main (int argc, char **argv) { /* {{{ */
             case 'p':
                 options.show_pid = 1;
                 break;
-            case 'a': case 'c': case 'R':
+            case 'a': case 'c': case 'R': case 'Y':
                 options.param_window = optarg;
                 action = opt;
                 break;
@@ -361,7 +362,7 @@ int main (int argc, char **argv) { /* {{{ */
             ret = wm_info(disp);
             break;
         case 'a': case 'c': case 'R': 
-        case 't': case 'e': case 'b': case 'N': case 'I': case 'T':
+        case 't': case 'e': case 'b': case 'N': case 'I': case 'T': case 'Y':
             if (! options.param_window) {
                 fputs("No window was specified.\n", stderr);
                 return EXIT_FAILURE;
@@ -734,6 +735,10 @@ static int activate_window (Display *disp, Window win, /* {{{ */
     return EXIT_SUCCESS;
 }/*}}}*/
 
+static int iconify_window (Display *disp, Window win) {/* {{{ */
+    return !XIconifyWindow(disp, win, DefaultScreen(disp));
+}/*}}}*/
+
 static int close_window (Display *disp, Window win) {/*{{{*/
     return client_msg(disp, win, "_NET_CLOSE_WINDOW", 
             0, 0, 0, 0, 0);
@@ -908,6 +913,9 @@ static int action_window (Display *disp, Window win, char mode) {/*{{{*/
     switch (mode) {
         case 'a':
             return activate_window(disp, win, TRUE);
+
+        case 'Y':
+            return iconify_window(disp, win);
 
         case 'c':
             return close_window(disp, win);
